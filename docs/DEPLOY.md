@@ -38,9 +38,37 @@ são protegidas por RLS. As de baixo, não: são segredos.
 
 ## Supabase Auth
 
-Em **Authentication → URL Configuration**, defina o *Site URL* como a URL de
-produção e inclua `https://<seu-domínio>/auth/confirm` nas *Redirect URLs* —
-sem isso o magic link volta para `localhost`.
+### URL Configuration (obrigatório)
+
+Em **Authentication → URL Configuration**:
+
+- **Site URL**: `https://mariana-comunidade.vercel.app` (ou o domínio final).
+  Enquanto isso ficar como `http://localhost:3000`, todo magic link enviado
+  leva a pessoa para a máquina dela — e não abre.
+- **Redirect URLs**: adicione `https://mariana-comunidade.vercel.app/**` e
+  `http://localhost:3000/**`. Sem o curinga, o Supabase ignora o
+  `redirect_to` que o app envia e joga o código na raiz do site.
+
+O app tolera esse segundo caso: o proxy encaminha `code`/`token_hash` de
+qualquer rota para `/auth/confirm`. Mas o Site URL errado não tem contorno
+possível pelo código — o link já sai errado do servidor de e-mail.
+
+### Template de e-mail (recomendado)
+
+Em **Authentication → Email Templates → Magic Link**, troque o link padrão
+`{{ .ConfirmationURL }}` por:
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">
+  Entrar na comunidade
+</a>
+```
+
+O formato padrão usa PKCE, que exige abrir o link **no mesmo navegador** que
+o solicitou. Como o público pede o acesso no computador e costuma abrir o
+e-mail no celular, isso quebraria com frequência. Com `token_hash` o link
+funciona em qualquer aparelho — a rota `/auth/confirm` já aceita os dois
+formatos.
 
 ## Diagnóstico
 
