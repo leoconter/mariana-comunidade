@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isSupabaseConfigured } from "@/lib/env";
 
 const PUBLIC_PATHS = [
   "/entrar",
@@ -11,6 +12,15 @@ const PUBLIC_PATHS = [
 ];
 
 export async function updateSession(request: NextRequest) {
+  // Without credentials the Supabase client throws, which would turn every
+  // route — even static ones — into an opaque 500. Show what is missing.
+  if (!isSupabaseConfigured()) {
+    if (request.nextUrl.pathname === "/configuracao") {
+      return NextResponse.next({ request });
+    }
+    return NextResponse.rewrite(new URL("/configuracao", request.url));
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
