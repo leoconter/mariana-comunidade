@@ -21,6 +21,23 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.rewrite(new URL("/configuracao", request.url));
   }
 
+  // Supabase falls back to the project's Site URL (usually "/") when the
+  // magic link's redirect_to is not in the allow list. Catch the auth code
+  // wherever it lands so the sign-in still completes instead of being
+  // dropped by the redirect to /entrar below.
+  const { pathname, searchParams } = request.nextUrl;
+  if (
+    pathname !== "/auth/confirm" &&
+    (searchParams.has("code") || searchParams.has("token_hash"))
+  ) {
+    const confirmUrl = request.nextUrl.clone();
+    confirmUrl.pathname = "/auth/confirm";
+    if (pathname !== "/" && !searchParams.has("proximo")) {
+      confirmUrl.searchParams.set("proximo", pathname);
+    }
+    return NextResponse.redirect(confirmUrl);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

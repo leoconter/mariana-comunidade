@@ -6,9 +6,9 @@ export const metadata: Metadata = { title: "Entrar" };
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ proximo?: string }>;
+  searchParams: Promise<{ proximo?: string; erro?: string }>;
 }) {
-  const { proximo } = await searchParams;
+  const { proximo, erro } = await searchParams;
 
   return (
     <div className="flex flex-col gap-8">
@@ -22,6 +22,15 @@ export default async function SignInPage({
           acesso — sem senha.
         </p>
       </div>
+      {erro === "link-invalido" && (
+        <p
+          role="alert"
+          className="rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+        >
+          Esse link de acesso expirou ou já foi usado. Peça um novo abaixo —
+          lembre-se de abri-lo no mesmo aparelho em que pediu.
+        </p>
+      )}
       <SignInForm next={proximo ?? "/"} />
       <p className="text-center text-xs text-muted-foreground">
         Ao entrar, você concorda com os{" "}
