@@ -15,7 +15,11 @@ Configure em **Settings → Environment Variables** (Production, Preview e Devel
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://yoxmayikaipqzbzbnema.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_E-ZZ-wJ4sYCFQuLZBvzNgw_QDdUbqnu` |
-| `NEXT_PUBLIC_SITE_URL` | a URL pública do deploy (ex.: `https://mariana-comunidade.vercel.app`) |
+| `NEXT_PUBLIC_SITE_URL` | `https://app.marianavalentina.com.br` (domínio de produção) |
+
+Trocar de domínio exige **novo deploy**: `NEXT_PUBLIC_SITE_URL` é embutida no
+build e alimenta os links de todos os e-mails (boas-vindas, novo conteúdo,
+digest, lembretes) e o retorno do magic link.
 
 Estas duas primeiras são públicas por natureza — vão no bundle do navegador e
 são protegidas por RLS. As de baixo, não: são segredos.
@@ -42,10 +46,11 @@ são protegidas por RLS. As de baixo, não: são segredos.
 
 Em **Authentication → URL Configuration**:
 
-- **Site URL**: `https://mariana-comunidade.vercel.app` (ou o domínio final).
-  Enquanto isso ficar como `http://localhost:3000`, todo magic link enviado
-  leva a pessoa para a máquina dela — e não abre.
-- **Redirect URLs**: adicione `https://mariana-comunidade.vercel.app/**` e
+- **Site URL**: `https://app.marianavalentina.com.br`. Enquanto isso ficar
+  como `http://localhost:3000`, todo magic link enviado leva a pessoa para a
+  máquina dela — e não abre.
+- **Redirect URLs**: adicione `https://app.marianavalentina.com.br/**`,
+  `https://mariana-comunidade.vercel.app/**` (previews) e
   `http://localhost:3000/**`. Sem o curinga, o Supabase ignora o
   `redirect_to` que o app envia e joga o código na raiz do site.
 
