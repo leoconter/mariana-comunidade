@@ -22,8 +22,8 @@ import {
 } from "../../moderacao/actions";
 import {
   grantAccess,
-  resendMagicLink,
   revokeGrant,
+  sendPasswordSetupLink,
   setMemberRole,
   updateMemberName,
   type MemberActionResult,
@@ -128,9 +128,9 @@ export function MemberDetailActions({
             variant="outline"
             size="sm"
             disabled={pending}
-            onClick={() => run(() => resendMagicLink(email))}
+            onClick={() => run(() => sendPasswordSetupLink(email, userId))}
           >
-            Reenviar link de acesso
+            Enviar link para criar senha
           </Button>
           {muted ? (
             <Button

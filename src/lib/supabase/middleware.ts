@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 
 const PUBLIC_PATHS = [
   "/entrar",
+  "/esqueci-senha",
   "/auth",
   "/termos",
   "/privacidade",

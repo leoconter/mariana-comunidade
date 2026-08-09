@@ -18,8 +18,7 @@ export default async function SignInPage({
           Mariana Valentina
         </p>
         <p className="mt-4 text-sm text-muted-foreground">
-          Entre com o e-mail da sua assinatura. Você vai receber um link de
-          acesso — sem senha.
+          Entre com o e-mail da sua assinatura e sua senha.
         </p>
       </div>
       {erro === "link-invalido" && (
@@ -27,8 +26,8 @@ export default async function SignInPage({
           role="alert"
           className="rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200"
         >
-          Esse link de acesso expirou ou já foi usado. Peça um novo abaixo —
-          lembre-se de abri-lo no mesmo aparelho em que pediu.
+          Esse link expirou ou já foi usado. Peça um novo em “Esqueci minha
+          senha”.
         </p>
       )}
       <SignInForm next={proximo ?? "/"} />

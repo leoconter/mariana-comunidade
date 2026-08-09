@@ -1,24 +1,37 @@
 "use client";
 
 import { useActionState } from "react";
-import Link from "next/link";
+import { MailCheck } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signInWithPassword, type SignInState } from "./actions";
+import { requestPasswordReset, type ResetState } from "./actions";
 
-const initialState: SignInState = { status: "idle" };
+const initialState: ResetState = { status: "idle" };
 
-export function SignInForm({ next }: { next: string }) {
+export function ResetForm() {
   const [state, formAction, pending] = useActionState(
-    signInWithPassword,
+    requestPasswordReset,
     initialState
   );
 
+  if (state.status === "sent") {
+    return (
+      <Alert>
+        <MailCheck className="size-4" />
+        <AlertTitle>Link enviado!</AlertTitle>
+        <AlertDescription>
+          Se existir uma conta com esse e-mail, o link para criar a nova senha
+          já está a caminho. Confira também a caixa de spam — o link vale por 1
+          hora.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <input type="hidden" name="next" value={next} />
-
       <div className="flex flex-col gap-2">
         <Label htmlFor="email">E-mail</Label>
         <Input
@@ -32,34 +45,14 @@ export function SignInForm({ next }: { next: string }) {
           autoFocus
         />
       </div>
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="password">Senha</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-        />
-      </div>
-
       {state.status === "error" && (
         <p role="alert" className="text-sm text-destructive">
           {state.message}
         </p>
       )}
-
       <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Entrando..." : "Entrar"}
+        {pending ? "Enviando..." : "Enviar link"}
       </Button>
-
-      <Link
-        href="/esqueci-senha"
-        className="text-center text-sm text-muted-foreground underline underline-offset-4"
-      >
-        Esqueci minha senha
-      </Link>
     </form>
   );
 }

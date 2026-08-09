@@ -20,7 +20,15 @@ Plano completo e decisões: `docs/PLANO.md`.
 
 ## Stack
 
-Next.js 16 (App Router) + TS · Tailwind v4 + shadcn/ui (estilo radix-nova, componentes em `src/components/ui`) · Supabase (Postgres 17, Auth magic link, Storage, RLS) · Vercel · Resend · Bunny Stream (vídeo: TUS upload, HLS, embed com token) · Tiptap (editor; templates editáveis vivem no banco em `post_types`).
+Next.js 16 (App Router) + TS · Tailwind v4 + shadcn/ui (estilo radix-nova, componentes em `src/components/ui`) · Supabase (Postgres 17, Auth por e-mail + senha, Storage, RLS) · Vercel · Resend · Bunny Stream (vídeo: TUS upload, HLS, embed com token) · Tiptap (editor; templates editáveis vivem no banco em `post_types`).
+
+### Autenticação
+
+Login é **e-mail + senha** (o magic link foi removido a pedido do cliente). Como o webhook da Kirvano cria a conta sem senha, o acesso da membra nova depende do e-mail de boas-vindas com o link de criação de senha:
+
+- `createPasswordSetupLink()` em `src/lib/auth-links.ts` gera um link para `/auth/confirm?token_hash=…&type=recovery&proximo=/nova-senha`. Aponta direto para o app — não depende da Site URL nem da lista de redirects do Supabase, e funciona em outro aparelho (o fluxo PKCE não funcionaria).
+- `/esqueci-senha` usa esse caminho quando `SUPABASE_SERVICE_ROLE_KEY` + Resend estão configurados; senão cai para `resetPasswordForEmail()` (e-mail do próprio Supabase).
+- `/nova-senha` exige sessão — a sessão vem da verificação do token de recuperação.
 
 ### Branding (marianavalentina.com.br)
 
@@ -43,7 +51,7 @@ Coral `#E9726D` (primary) · pêssego `#FFB0A3` · laranja `#FF9C50` (accent) ·
 ## Pendências de configuração manual (dashboard)
 
 - `SUPABASE_SERVICE_ROLE_KEY` em `.env.local` (Settings → API keys)
-- Template de e-mail do magic link em pt-BR usando `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&proximo=/` (evita quebra de PKCE quando o link abre em outro navegador) + SMTP do Resend
+- `SUPABASE_SERVICE_ROLE_KEY` + `RESEND_API_KEY`/`EMAIL_FROM`: sem eles nenhuma membra nova consegue criar senha (o e-mail não sai). Deixaram de ser opcionais quando o login virou só senha.
 - Site URL / Redirect URLs de produção em Auth → URL Configuration
 - Ícones PWA reais em `public/icons/` (192/512/maskable) — placeholder até o logo chegar
 

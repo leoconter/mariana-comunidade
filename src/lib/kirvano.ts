@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createPasswordSetupLink } from "@/lib/auth-links";
 import { sendTemplateEmail } from "@/lib/email";
 
 /**
@@ -241,11 +242,18 @@ export async function processKirvanoEvent(
     const firstName = (event.fullName ?? profile.full_name ?? "").split(" ")[0];
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
     if (event.kind === "activated" || event.kind === "reactivated") {
+      // Accounts provisioned here have no password yet, so the welcome email
+      // carries the link that lets her create one (falls back to the login
+      // page for people who already have an account).
+      const passwordLink = await createPasswordSetupLink(event.email);
       await sendTemplateEmail({
         templateKey: "welcome",
         to: event.email,
         userId: profile.id,
-        variables: { nome: firstName || "colega", url: `${siteUrl}/entrar` },
+        variables: {
+          nome: firstName || "colega",
+          url: passwordLink ?? `${siteUrl}/entrar`,
+        },
         related: { event: event.rawEventType },
       });
     } else if (event.kind === "payment_failed" && next.grace_until) {

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { createPasswordSetupLink } from "@/lib/auth-links";
+import { sendTemplateEmail } from "@/lib/email";
 import { createClient } from "@/lib/supabase/server";
 import { recomputeAccessValidUntil } from "@/lib/kirvano";
 
@@ -65,20 +67,37 @@ export async function revokeGrant(
   return { ok: true };
 }
 
-export async function resendMagicLink(
-  email: string
+/** Sends the "create your password" link — used for members who never set one. */
+export async function sendPasswordSetupLink(
+  email: string,
+  userId: string
 ): Promise<MemberActionResult> {
   await requireAdmin();
+
+  const link = await createPasswordSetupLink(email);
+  if (!link) {
+    return { ok: false, message: "Não foi possível gerar o link de senha." };
+  }
+
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirm`,
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .single();
+
+  await sendTemplateEmail({
+    templateKey: "password_setup",
+    to: email,
+    userId,
+    variables: {
+      nome: (profile?.full_name ?? "").split(" ")[0] || "colega",
+      url_senha: link,
     },
+    related: { flow: "admin_password_setup" },
   });
-  if (error)
-    return { ok: false, message: "Não foi possível reenviar o link." };
-  return { ok: true, message: `Link de acesso reenviado para ${email}.` };
+
+  return { ok: true, message: `Link de senha enviado para ${email}.` };
 }
 
 export async function updateMemberName(

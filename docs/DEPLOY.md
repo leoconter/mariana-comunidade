@@ -58,22 +58,24 @@ O app tolera esse segundo caso: o proxy encaminha `code`/`token_hash` de
 qualquer rota para `/auth/confirm`. Mas o Site URL errado não tem contorno
 possível pelo código — o link já sai errado do servidor de e-mail.
 
-### Template de e-mail (recomendado)
+### Template de e-mail (só importa no modo de contingência)
 
-Em **Authentication → Email Templates → Magic Link**, troque o link padrão
-`{{ .ConfirmationURL }}` por:
+O login é por **e-mail + senha**. Com `SUPABASE_SERVICE_ROLE_KEY` e Resend
+configurados, o app gera e envia o link de criação de senha por conta
+própria, sem passar pelos templates do Supabase.
+
+Se esses dois não estiverem configurados, `/esqueci-senha` cai para o e-mail
+do próprio Supabase. Nesse caso, ajuste **Authentication → Email Templates →
+Reset Password** para:
 
 ```html
-<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">
-  Entrar na comunidade
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&proximo=/nova-senha">
+  Criar minha senha
 </a>
 ```
 
-O formato padrão usa PKCE, que exige abrir o link **no mesmo navegador** que
-o solicitou. Como o público pede o acesso no computador e costuma abrir o
-e-mail no celular, isso quebraria com frequência. Com `token_hash` o link
-funciona em qualquer aparelho — a rota `/auth/confirm` já aceita os dois
-formatos.
+O padrão usa PKCE, que exige abrir o link **no mesmo navegador** que o
+solicitou — e o público costuma pedir no computador e abrir no celular.
 
 ## Diagnóstico
 
