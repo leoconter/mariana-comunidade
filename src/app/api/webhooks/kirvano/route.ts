@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  isIgnoredEvent,
   isMappedEvent,
   normalizeKirvanoEvent,
   processKirvanoEvent,
@@ -50,6 +51,14 @@ export async function POST(request: NextRequest) {
 
   const event = normalizeKirvanoEvent(payload);
   if (!event) {
+    const rawEvent = String(
+      payload.event ?? payload.event_type ?? payload.type ?? ""
+    );
+    // PIX generated, bank slip expired… nothing to decide, and no reason to
+    // show them as failures in the panel.
+    if (isIgnoredEvent(rawEvent)) {
+      return NextResponse.json({ ok: true, ignored: true });
+    }
     // Unrecognised events are acknowledged (200) so Kirvano stops retrying,
     // but they are still recorded: the real event names have to be readable
     // in /admin/configuracoes, otherwise a mismatch between Kirvano's

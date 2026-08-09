@@ -47,9 +47,53 @@ const EVENT_MAP: Record<string, KirvanoEventKind> = {
   SUBSCRIPTION_REACTIVATED: "reactivated",
 };
 
+/**
+ * Events Kirvano sends that carry no access decision (a PIX code was
+ * generated, a bank slip expired…). Acknowledged and dropped without being
+ * flagged as a problem, so the admin panel only surfaces real mismatches.
+ */
+const IGNORED_EVENTS = new Set([
+  "PIX_GENERATED",
+  "PIX_EXPIRED",
+  "BANK_SLIP_GENERATED",
+  "BANK_SLIP_EXPIRED",
+  "ABANDONED_CART",
+]);
+
+export function isIgnoredEvent(rawEventType: string): boolean {
+  return IGNORED_EVENTS.has(rawEventType.toUpperCase());
+}
+
 /** Whether Kirvano's raw event name is one we know how to act on. */
 export function isMappedEvent(rawEventType: string): boolean {
   return rawEventType.toUpperCase() in EVENT_MAP;
+}
+
+/**
+ * Kirvano reports the billing period as `plan.charge_frequency`
+ * (MONTHLY / QUARTERLY / ANNUALLY) — more reliable than the offer name.
+ */
+export function mapChargeFrequency(
+  raw: string | undefined | null
+): NormalizedKirvanoEvent["plan"] {
+  const value = (raw ?? "").toUpperCase();
+  if (value.includes("ANNUAL") || value.includes("YEAR")) return "annual";
+  if (value.includes("QUARTER")) return "quarterly";
+  if (value.includes("MONTH")) return "monthly";
+  return null;
+}
+
+/**
+ * Kirvano sends dates as "2024-12-18 16:41:16" (no timezone). They come from
+ * a Brazilian platform, so they are read as America/Sao_Paulo (-03:00, no DST
+ * since 2019). Reading them as UTC would cut access 3 hours early.
+ */
+function parseKirvanoDate(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const naive = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})$/.exec(raw.trim());
+  const iso = naive ? `${naive[1]}T${naive[2]}-03:00` : raw;
+  const parsed = Date.parse(iso);
+  return Number.isNaN(parsed) ? undefined : new Date(parsed).toISOString();
 }
 
 export function mapPlanName(
@@ -118,16 +162,15 @@ export function normalizeKirvanoEvent(
     kind,
     email,
     fullName: (customer.name as string | undefined) ?? undefined,
-    plan: mapPlanName(planName),
+    plan:
+      mapChargeFrequency(plan.charge_frequency as string | undefined) ??
+      mapPlanName(planName),
     customerId: (customer.id as string | undefined) ?? undefined,
     subscriptionId:
       (payload.subscription_id as string | undefined) ??
       (payload.sale_id as string | undefined) ??
       undefined,
-    periodEnd:
-      periodEndRaw && !Number.isNaN(Date.parse(periodEndRaw))
-        ? new Date(periodEndRaw).toISOString()
-        : undefined,
+    periodEnd: parseKirvanoDate(periodEndRaw),
     rawPayload: payload,
     rawEventType,
   };
