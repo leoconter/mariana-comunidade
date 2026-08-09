@@ -18,6 +18,25 @@ export async function POST(request: NextRequest) {
     request.nextUrl.searchParams.get("token");
 
   if (!expected || received !== expected) {
+    // Record the rejection (never the payload or the token itself) so that
+    // "Kirvano is calling but the token is wrong" is distinguishable from
+    // "Kirvano never called". Failures here must not change the response.
+    try {
+      await createAdminClient()
+        .from("kirvano_webhook_events")
+        .insert({
+          external_event_id: `rejeitado:${Date.now()}`,
+          event_type: "NAO_AUTORIZADO",
+          payload: {} as never,
+          error: !expected
+            ? "A chamada chegou, mas KIRVANO_WEBHOOK_TOKEN não está configurado no servidor."
+            : received
+              ? "A chamada chegou com um token que não confere com KIRVANO_WEBHOOK_TOKEN."
+              : "A chamada chegou sem nenhum token de segurança.",
+        });
+    } catch {
+      // Service-role key missing — nothing to log with.
+    }
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
