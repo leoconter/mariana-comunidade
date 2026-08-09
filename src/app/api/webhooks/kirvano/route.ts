@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { normalizeKirvanoEvent, processKirvanoEvent } from "@/lib/kirvano";
+import {
+  isMappedEvent,
+  normalizeKirvanoEvent,
+  processKirvanoEvent,
+} from "@/lib/kirvano";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Kirvano webhook. Kirvano sends the configured security token in the
@@ -26,8 +31,25 @@ export async function POST(request: NextRequest) {
 
   const event = normalizeKirvanoEvent(payload);
   if (!event) {
-    // Unknown event types are acknowledged (200) so Kirvano does not retry.
-    return NextResponse.json({ ok: true, ignored: true });
+    // Unrecognised events are acknowledged (200) so Kirvano stops retrying,
+    // but they are still recorded: the real event names have to be readable
+    // in /admin/configuracoes, otherwise a mismatch between Kirvano's
+    // vocabulary and EVENT_MAP would fail silently and no access would be
+    // granted after a purchase.
+    const rawType = String(
+      payload.event ?? payload.event_type ?? payload.type ?? "DESCONHECIDO"
+    ).toUpperCase();
+    await createAdminClient()
+      .from("kirvano_webhook_events")
+      .insert({
+        external_event_id: `unmapped:${rawType}:${Date.now()}`,
+        event_type: rawType,
+        payload: payload as never,
+        error: isMappedEvent(rawType)
+          ? "evento reconhecido, mas sem e-mail da compradora no payload"
+          : "evento não reconhecido — falta mapear em EVENT_MAP",
+      });
+    return NextResponse.json({ ok: true, ignored: true, event: rawType });
   }
 
   const result = await processKirvanoEvent(event);

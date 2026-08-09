@@ -47,6 +47,11 @@ const EVENT_MAP: Record<string, KirvanoEventKind> = {
   SUBSCRIPTION_REACTIVATED: "reactivated",
 };
 
+/** Whether Kirvano's raw event name is one we know how to act on. */
+export function isMappedEvent(rawEventType: string): boolean {
+  return rawEventType.toUpperCase() in EVENT_MAP;
+}
+
 export function mapPlanName(
   raw: string | undefined | null
 ): NormalizedKirvanoEvent["plan"] {
