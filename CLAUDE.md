@@ -22,6 +22,12 @@ Plano completo e decisões: `docs/PLANO.md`.
 
 Next.js 16 (App Router) + TS · Tailwind v4 + shadcn/ui (estilo radix-nova, componentes em `src/components/ui`) · Supabase (Postgres 17, Auth por e-mail + senha, Storage, RLS) · Vercel · Resend · Bunny Stream (vídeo: TUS upload, HLS, embed com token) · Tiptap (editor; templates editáveis vivem no banco em `post_types`).
 
+### Vídeo (Bunny Stream)
+
+Library `comunidade-pelvica` (id `724585`), replicação só BR, pull zone `vz-e98880bf-472.b-cdn.net`. `BUNNY_EMBED_TOKEN_KEY` é a Token Authentication Key da aba Security da library (não é exposta pela API do `videolibrary`).
+
+O token do embed protege **apenas o iframe** — os arquivos em `<cdn-host>/<guid>/playlist.m3u8` continuam servíveis por quem tiver o GUID. O que fecha isso é a lista de referrers permitidos da library (`app.marianavalentina.com.br`, `iframe.mediadelivery.net`, `localhost`) combinada com `BlockNoneReferrer`. Ao adicionar um domínio novo (preview da Vercel, domínio próprio), incluir na lista via `POST /videolibrary/724585/addAllowedReferrer` — senão o vídeo simplesmente não toca lá. Referrer é falsificável: contra pirataria determinada só DRM resolve.
+
 ### Autenticação
 
 Login é **e-mail + senha** (o magic link foi removido a pedido do cliente). Como o webhook da Kirvano cria a conta sem senha, o acesso da membra nova depende do e-mail de boas-vindas com o link de criação de senha:
@@ -50,10 +56,11 @@ Coral `#E9726D` (primary) · pêssego `#FFB0A3` · laranja `#FF9C50` (accent) ·
 
 ## Pendências de configuração manual (dashboard)
 
-- `SUPABASE_SERVICE_ROLE_KEY` em `.env.local` (Settings → API keys)
-- `SUPABASE_SERVICE_ROLE_KEY` + `RESEND_API_KEY`/`EMAIL_FROM`: sem eles nenhuma membra nova consegue criar senha (o e-mail não sai). Deixaram de ser opcionais quando o login virou só senha.
+Produção (`app.marianavalentina.com.br`) já tem todas as variáveis configuradas — conferir pelo health check `GET /api/webhooks/kirvano`, que reporta a presença de cada uma sem expor valor. `.env.local` ainda precisa de `SUPABASE_SERVICE_ROLE_KEY` e `KIRVANO_WEBHOOK_TOKEN` para rodar esses fluxos localmente.
+
 - Site URL / Redirect URLs de produção em Auth → URL Configuration
 - Ícones PWA reais em `public/icons/` (192/512/maskable) — placeholder até o logo chegar
+- Bunny: cadastrar cartão antes de **23/08/2026**; o crédito de trial expira junto com o período e a library para de servir vídeo
 
 ## Estado dos incrementos
 
@@ -62,6 +69,7 @@ Coral `#E9726D` (primary) · pêssego `#FFB0A3` · laranja `#FF9C50` (accent) ·
 ## Jobs e automações
 
 - `pg_cron` roda `run_publish_sweep()` a cada minuto (flip scheduled→published + notificações in-app).
-- Rotas `/api/jobs/{publish-sweep,event-reminders,access-sweep,weekly-digest}` (header `x-jobs-secret: $JOBS_SECRET`) cuidam dos e-mails — agendar via `pg_cron`+`pg_net` (migração futura com a URL de produção) ou Vercel Cron. Todas idempotentes.
+- Rotas `/api/jobs/{publish-sweep,event-reminders,access-sweep,weekly-digest}` (header `x-jobs-secret: $JOBS_SECRET`) cuidam dos e-mails. Agendadas em `0007_jobs_cron.sql` via `pg_cron`+`pg_net` → `public.call_job(path)`, que lê `jobs_base_url` e `jobs_secret` do Vault (nenhum segredo no repositório). Todas idempotentes. Publish/lembretes a cada 5min, access-sweep 06:00 UTC, digest segunda 11:00 UTC.
+- `/api/jobs` e `/api/webhooks` precisam estar em `PUBLIC_PATHS` (`src/lib/supabase/middleware.ts`): eles se autenticam por header, e sem isso o POST vira redirect para `/entrar` com status 200 — job silenciosamente morto.
 - Webhooks: `/api/webhooks/kirvano` (header `security-token`) e `/api/webhooks/bunny?secret=$JOBS_SECRET`.
 - Mapeamento de eventos Kirvano→interno: `EVENT_MAP` em `src/lib/kirvano.ts` — ajustar com os payloads reais.
