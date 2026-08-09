@@ -9,6 +9,10 @@ const PUBLIC_PATHS = [
   "/termos",
   "/privacidade",
   "/api/webhooks",
+  // Authenticated by the x-jobs-secret header, not by a session. Without this
+  // the cron POST is redirected to /entrar and answers 200 with the login page
+  // — a job that never runs and never reports a failure.
+  "/api/jobs",
   "/manifest.webmanifest",
 ];
 
