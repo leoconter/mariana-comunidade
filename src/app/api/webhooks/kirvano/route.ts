@@ -8,6 +8,23 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
+ * Health check for the integration. Reports only whether each piece of
+ * configuration exists — never a value — so the setup can be verified from
+ * outside without database access.
+ */
+export async function GET() {
+  return NextResponse.json({
+    endpoint: "kirvano",
+    token_configurado: Boolean(process.env.KIRVANO_WEBHOOK_TOKEN),
+    service_role_configurada: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    email_configurado: Boolean(
+      process.env.RESEND_API_KEY && process.env.EMAIL_FROM
+    ),
+    site_url: process.env.NEXT_PUBLIC_SITE_URL ?? null,
+  });
+}
+
+/**
  * Kirvano webhook. Kirvano sends the configured security token in the
  * `security-token` header — set the same value in KIRVANO_WEBHOOK_TOKEN.
  */
@@ -38,7 +55,19 @@ export async function POST(request: NextRequest) {
     } catch {
       // Service-role key missing — nothing to log with.
     }
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    // The reason is echoed back (never the token) so the cause is visible in
+    // Kirvano's own delivery log, without depending on the database.
+    return NextResponse.json(
+      {
+        error: "unauthorized",
+        reason: !expected
+          ? "KIRVANO_WEBHOOK_TOKEN_NAO_CONFIGURADO"
+          : received
+            ? "TOKEN_DIVERGENTE"
+            : "TOKEN_AUSENTE_NA_REQUISICAO",
+      },
+      { status: 401 }
+    );
   }
 
   const payload = (await request.json().catch(() => null)) as Record<
